@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Love Challenge – Couples Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- =====================================================
+     ADMOB ADS — MODULAR INTEGRATION POINTS
+     Developer: Replace placeholder IDs with real AdMob IDs
+     
+     BANNER AD:   Insert your banner HTML/JS below div#admob-banner
+     INTERSTITIAL: Call window.AdMobBridge.showInterstitial() 
+                   (triggered every 4 games automatically)
+     REWARD AD:   Call window.AdMobBridge.showRewardAd(callback)
+                   (triggered on "Change Task" button tap)
+     
+     For Android WebView: use JavascriptInterface
+     For iOS WKWebView:   use WKScriptMessageHandler
+     ===================================================== -->
+
+<style>
+:root{--rose:#ff4d79;--rose2:#ff1f5a;--gold:#ffd166;--mid:#7a3050;--card-bg:rgba(255,248,249,0.97);--shadow:0 24px 60px rgba(255,77,121,0.18);}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+body{min-height:100vh;background:#0d0008;font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow-x:hidden;position:relative;}
+.bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse at 20% 20%,#3d0a20 0%,transparent 55%),radial-gradient(ellipse at 80% 80%,#1a0535 0%,transparent 55%),radial-gradient(ellipse at 50% 50%,#0d0015 0%,transparent 80%);}
+.bg-stars{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(1px 1px at 15% 25%,rgba(255,200,220,.6) 0%,transparent 100%),radial-gradient(1px 1px at 70% 15%,rgba(255,170,200,.5) 0%,transparent 100%),radial-gradient(1px 1px at 40% 60%,rgba(255,200,240,.4) 0%,transparent 100%),radial-gradient(1px 1px at 85% 70%,rgba(200,150,255,.5) 0%,transparent 100%),radial-gradient(1px 1px at 25% 80%,rgba(255,210,180,.4) 0%,transparent 100%);}
+.heart-particle{position:fixed;pointer-events:none;z-index:999;animation:floatUp 5s ease-out forwards;}
+@keyframes floatUp{0%{transform:translateY(0) scale(1) rotate(0deg);opacity:1;}100%{transform:translateY(-110vh) scale(.3) rotate(540deg);opacity:0;}}
+.confetti-p{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:999;animation:confFall 2.5s cubic-bezier(.25,.46,.45,.94) forwards;}
+@keyframes confFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+.game-container{max-width:480px;width:100%;position:relative;z-index:10;}
+.screen{background:var(--card-bg);border-radius:40px;padding:32px 26px 38px;box-shadow:var(--shadow),0 0 0 1px rgba(255,150,180,.2),inset 0 1px 0 rgba(255,255,255,.8);position:relative;overflow:hidden;}
+.screen::before{content:'';position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--rose),#c77dff,var(--gold),var(--rose));background-size:200% 100%;animation:shimmer 3s linear infinite;}
+@keyframes shimmer{0%{background-position:0%}100%{background-position:200%}}
+.hidden{display:none!important;}
+/* HOME */
+.home-emoji{font-size:3.2rem;text-align:center;display:block;margin-bottom:10px;animation:hb 2s ease-in-out infinite;}
+@keyframes hb{0%,100%{transform:scale(1);}15%{transform:scale(1.15);}30%{transform:scale(1);}45%{transform:scale(1.08);}}
+h1{font-family:'Playfair Display',serif;font-size:2.3rem;font-weight:900;font-style:italic;text-align:center;line-height:1.1;background:linear-gradient(135deg,#ff4d79 0%,#c77dff 50%,#ffd166 100%);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px;}
+.tagline{text-align:center;font-size:.8rem;font-weight:500;letter-spacing:.2em;color:var(--mid);text-transform:uppercase;margin-bottom:20px;opacity:.7;}
+/* AVATARS */
+.couple-avatars{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;}
+.avatar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.avatar-circle{width:68px;height:68px;border-radius:50%;border:3px solid var(--rose);overflow:hidden;position:relative;cursor:pointer;background:linear-gradient(135deg,rgba(255,77,121,.15),rgba(199,125,255,.15));display:flex;align-items:center;justify-content:center;transition:.2s;}
+.avatar-circle:active{transform:scale(.93);}
+.avatar-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.avatar-emoji{font-size:2rem;position:absolute;}
+.avatar-edit-hint{font-size:.6rem;color:var(--rose);font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.8;}
+.avatar-name-input{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:var(--rose2);background:transparent;border:none;border-bottom:1.5px solid rgba(255,77,121,.3);outline:none;text-align:center;width:90px;padding:2px 4px;}
+.couple-heart-big{font-size:2rem;animation:hb 2s ease-in-out infinite;flex-shrink:0;}
+/* hidden file inputs for avatars */
+#avatarInput1,#avatarInput2{display:none;}
+/* BUTTONS */
+.btn{display:block;width:100%;border:none;cursor:pointer;border-radius:60px;padding:15px 22px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;transition:all .18s cubic-bezier(.34,1.56,.64,1);position:relative;text-align:center;margin-bottom:10px;letter-spacing:.01em;}
+.btn:active{transform:scale(.96) translateY(2px);}
+.btn-primary{background:linear-gradient(135deg,var(--rose),var(--rose2));color:white;box-shadow:0 8px 24px rgba(255,31,90,.35),0 2px 0 rgba(255,255,255,.15) inset;}
+.btn-primary:hover{box-shadow:0 12px 32px rgba(255,31,90,.45);transform:translateY(-2px);}
+.btn-ghost{background:rgba(255,77,121,.07);color:var(--rose2);border:1px solid rgba(255,77,121,.2);}
+.btn-ghost:hover{background:rgba(255,77,121,.12);}
+.btn-sm{padding:13px 16px;font-size:.9rem;margin-bottom:0;}
+.btn-row{display:flex;gap:10px;margin-bottom:10px;}
+.btn-row .btn{flex:1;}
+/* GAME */
+.turn-banner{background:linear-gradient(135deg,rgba(255,77,121,.12),rgba(199,125,255,.12));border:1px solid rgba(255,77,121,.2);border-radius:60px;padding:11px 20px;text-align:center;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:10px;}
+.turn-avatar-mini{width:36px;height:36px;border-radius:50%;border:2px solid var(--rose);overflow:hidden;background:rgba(255,77,121,.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.turn-avatar-mini img{width:100%;height:100%;object-fit:cover;}
+.turn-avatar-mini-emoji{font-size:1.2rem;}
+.turn-text{display:flex;flex-direction:column;}
+.turn-label{font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mid);opacity:.7;font-weight:600;}
+.turn-name{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;color:var(--rose2);}
+.score-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
+.score-pill{flex:1;background:rgba(255,77,121,.07);border:1px solid rgba(255,77,121,.15);border-radius:40px;padding:8px 10px;text-align:center;transition:.3s;display:flex;align-items:center;gap:7px;justify-content:center;}
+.score-pill.active-turn{background:rgba(255,77,121,.18);border-color:var(--rose);box-shadow:0 0 14px rgba(255,77,121,.25);}
+.score-pill-av{width:28px;height:28px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(255,77,121,.3);flex-shrink:0;background:rgba(255,77,121,.1);display:flex;align-items:center;justify-content:center;font-size:.9rem;}
+.score-pill-av img{width:100%;height:100%;object-fit:cover;}
+.s-info{display:flex;flex-direction:column;align-items:flex-start;}
+.s-name{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--mid);opacity:.7;font-weight:600;}
+.s-pts{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:var(--rose);line-height:1;}
+.score-vs{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--mid);opacity:.4;flex-shrink:0;}
+.prog-wrap{margin-bottom:12px;}
+.prog-row{display:flex;gap:6px;}
+.prog-bar-outer{flex:1;height:6px;background:rgba(255,77,121,.1);border-radius:10px;overflow:hidden;}
+.prog-bar-inner{height:100%;background:linear-gradient(90deg,var(--rose),#c77dff);border-radius:10px;transition:width .5s cubic-bezier(.34,1.56,.64,1);}
+.spin-wrap{display:flex;justify-content:center;margin:12px 0 14px;}
+.spin-btn{width:148px;height:148px;border-radius:50%;background:conic-gradient(from 0deg,#ff4d79,#c77dff,#ffd166,#ff4d79);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:none;position:relative;box-shadow:0 0 0 8px rgba(255,77,121,.1),0 20px 40px rgba(255,31,90,.3);transition:all .2s;}
+.spin-btn::before{content:'';position:absolute;inset:8px;border-radius:50%;background:linear-gradient(135deg,#fff5f8,#ffeef5);box-shadow:inset 0 2px 8px rgba(255,77,121,.1);}
+.spin-btn-emoji{font-size:1.9rem;position:relative;z-index:1;}
+.spin-btn-label{font-family:'Playfair Display',serif;font-size:.82rem;font-weight:700;color:var(--rose2);position:relative;z-index:1;letter-spacing:.05em;}
+.spin-btn:hover{transform:scale(1.04);}.spin-btn:active{transform:scale(.96);}
+.spinning{animation:spinPop .6s cubic-bezier(.22,1,.36,1);}
+@keyframes spinPop{0%{transform:rotate(0) scale(1);}40%{transform:rotate(360deg) scale(1.08);}70%{transform:rotate(540deg) scale(1.04);}100%{transform:rotate(720deg) scale(1);}}
+.challenge-card{background:white;border-radius:28px;padding:20px 18px 18px;margin-bottom:10px;border:1px solid rgba(255,150,180,.2);box-shadow:0 8px 32px rgba(255,77,121,.08);position:relative;overflow:hidden;min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.challenge-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--rose),#c77dff,var(--gold));}
+.challenge-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 15px;border-radius:60px;font-size:.74rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;}
+.badge-truth{background:rgba(255,77,121,.12);color:#c2185b;}
+.badge-dare{background:rgba(255,100,20,.12);color:#e65100;}
+.badge-funny{background:rgba(100,200,100,.12);color:#2e7d32;}
+.badge-romantic{background:rgba(199,125,255,.15);color:#7b1fa2;}
+.badge-ready{background:rgba(255,77,121,.08);color:var(--mid);}
+.challenge-text{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;line-height:1.4;color:#1a0a10;text-align:center;transition:all .3s ease;}
+.action-hint{text-align:center;font-size:.68rem;font-weight:600;letter-spacing:.06em;color:var(--mid);opacity:.45;margin-bottom:8px;text-transform:uppercase;}
+/* CHANGE TASK (reward ad) */
+.change-task-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);border-radius:60px;padding:7px 16px;font-size:.72rem;font-weight:700;color:#b8860b;cursor:pointer;margin:0 auto 10px;transition:.15s;width:fit-content;}
+.change-task-btn:active{transform:scale(.95);}
+.change-task-btn.hidden{display:none;}
+/* TIMER */
+.timer-wrap{margin-bottom:10px;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.timer-ring-wrap{position:relative;width:68px;height:68px;}
+.timer-svg{transform:rotate(-90deg);}
+.timer-track{fill:none;stroke:rgba(255,77,121,.1);stroke-width:5;}
+.timer-arc{fill:none;stroke:var(--rose);stroke-width:5;stroke-linecap:round;stroke-dasharray:188.5;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .5s;}
+.timer-arc.urgent{stroke:#ff1f5a;}
+.timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:900;color:var(--rose2);}
+.timer-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.15em;color:var(--mid);opacity:.6;font-weight:600;}
+.timer-btns{display:flex;gap:8px;}
+.timer-btn{background:rgba(255,77,121,.08);border:1px solid rgba(255,77,121,.15);border-radius:60px;padding:5px 13px;font-size:.74rem;font-weight:600;color:var(--rose2);cursor:pointer;transition:.15s;}
+.timer-btn:hover{background:rgba(255,77,121,.15);}
+/* CATEGORY PILLS */
+.cat-pills{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:10px;}
+.cat-pill{padding:5px 12px;border-radius:60px;font-size:.7rem;font-weight:600;cursor:pointer;transition:all .18s;border:1.5px solid transparent;}
+.cat-pill.active{border-color:var(--rose);}
+.cat-pill[data-cat="all"]{background:rgba(255,77,121,.1);color:#c2185b;}
+.cat-pill[data-cat="truth"]{background:rgba(255,77,121,.08);color:#c2185b;}
+.cat-pill[data-cat="dare"]{background:rgba(255,140,0,.08);color:#e65100;}
+.cat-pill[data-cat="funny"]{background:rgba(50,180,50,.08);color:#2e7d32;}
+.cat-pill[data-cat="romantic"]{background:rgba(199,125,255,.1);color:#7b1fa2;}
+/* SETTINGS */
+.settings-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:900;color:var(--rose2);text-align:center;margin-bottom:20px;}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-radius:18px;background:rgba(255,77,121,.04);margin-bottom:7px;border:1px solid rgba(255,77,121,.08);}
+.setting-row label{font-size:.88rem;font-weight:600;color:var(--mid);}
+.setting-input{background:white;border:1.5px solid rgba(255,77,121,.2);padding:7px 13px;border-radius:40px;font-size:.88rem;width:125px;text-align:center;font-weight:600;color:var(--rose2);font-family:'DM Sans',sans-serif;}
+.toggle{width:46px;height:24px;background:#ddd;border-radius:40px;position:relative;cursor:pointer;transition:.2s;}
+.toggle.on{background:var(--rose);}
+.toggle::after{content:'';width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:2px;left:2px;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+.toggle.on::after{left:24px;}
+.vol-slider{width:105px;-webkit-appearance:none;appearance:none;height:4px;background:rgba(255,77,121,.2);border-radius:5px;outline:none;}
+.vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--rose);cursor:pointer;box-shadow:0 2px 6px rgba(255,31,90,.3);}
+.section-sep{font-size:.7rem;text-transform:uppercase;letter-spacing:.18em;color:var(--mid);opacity:.5;font-weight:700;margin:16px 0 7px 4px;}
+/* TOAST */
+.pt-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:linear-gradient(135deg,var(--rose),#c77dff);color:white;padding:11px 26px;border-radius:60px;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;box-shadow:0 8px 24px rgba(255,31,90,.3);z-index:9999;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s;opacity:0;pointer-events:none;}
+.pt-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+/* LEVEL SYSTEM */
+.level-badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 14px;border-radius:60px;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1.5px solid;}
+.level-badge.easy{background:rgba(100,200,100,.12);color:#2e7d32;border-color:rgba(100,200,100,.3);}
+.level-badge.medium{background:rgba(255,140,0,.12);color:#e65100;border-color:rgba(255,140,0,.3);}
+.level-badge.hard{background:rgba(255,77,121,.12);color:#c2185b;border-color:rgba(255,77,121,.3);}
+.level-badge.extreme{background:rgba(180,0,255,.12);color:#7b1fa2;border-color:rgba(180,0,255,.3);}
+.level-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.level-bar-outer{flex:1;height:5px;background:rgba(255,77,121,.1);border-radius:10px;overflow:hidden;}
+.level-bar-inner{height:100%;border-radius:10px;transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+.level-bar-inner.easy{background:linear-gradient(90deg,#66bb6a,#43a047);}
+.level-bar-inner.medium{background:linear-gradient(90deg,#ffa726,#ef6c00);}
+.level-bar-inner.hard{background:linear-gradient(90deg,var(--rose),var(--rose2));}
+.level-bar-inner.extreme{background:linear-gradient(90deg,#ce93d8,#7b1fa2);}
+/* LEVELUP OVERLAY */
+.levelup-overlay{position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(10,0,15,.9);backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity .4s;}
+.levelup-overlay.show{opacity:1;pointer-events:all;}
+.levelup-card{background:linear-gradient(145deg,#1a0a10,#0d0030);border-radius:36px;padding:42px 28px 34px;max-width:340px;width:90%;text-align:center;border:1px solid rgba(255,209,102,.3);box-shadow:0 40px 80px rgba(0,0,0,.7),0 0 60px rgba(255,209,102,.15);}
+.levelup-star{font-size:3.2rem;display:block;margin-bottom:8px;animation:starPop .6s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes starPop{0%{transform:scale(0) rotate(-90deg);}100%{transform:scale(1) rotate(0deg);}}
+.levelup-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;font-style:italic;background:linear-gradient(135deg,#ffd166,#ff9a9e);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+.levelup-num{font-family:'Playfair Display',serif;font-size:3.5rem;font-weight:900;color:white;line-height:1;margin-bottom:6px;}
+.levelup-tier{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;font-weight:700;margin-bottom:14px;}
+.levelup-msg{font-size:.86rem;color:rgba(255,200,220,.65);line-height:1.5;margin-bottom:20px;}
+.levelup-btn{width:100%;border:none;cursor:pointer;border-radius:60px;padding:14px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;background:linear-gradient(135deg,#ffd166,#ff9a9e);color:#1a0a10;box-shadow:0 6px 20px rgba(255,209,102,.25);transition:transform .18s;}
+.levelup-btn:active{transform:scale(.96);}
+.max-level-glow{box-shadow:0 0 0 3px rgba(180,0,255,.4),0 0 24px rgba(180,0,255,.2)!important;}
+/* WIN OVERLAY */
+.win-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(10,0,15,.88);backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .5s;}
+.win-overlay.show{opacity:1;pointer-events:all;}
+.win-card{background:linear-gradient(145deg,#1a0a10,#0d0030);border-radius:40px;padding:36px 28px 32px;max-width:370px;width:92%;text-align:center;border:1px solid rgba(255,77,121,.25);box-shadow:0 40px 80px rgba(0,0,0,.7),0 0 60px rgba(255,77,121,.15);}
+.win-trophy{font-size:4rem;display:block;margin-bottom:8px;animation:trophySpin 1s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes trophySpin{0%{transform:scale(0) rotate(-180deg);}100%{transform:scale(1) rotate(0deg);}}
+.win-title{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;font-style:italic;background:linear-gradient(135deg,#ffd166,#ff9a9e);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+.win-subtitle{font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,200,220,.4);font-weight:600;margin-bottom:16px;}
+.win-names{display:flex;flex-direction:column;gap:9px;margin-bottom:18px;}
+.win-row{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-radius:16px;}
+.win-row.winner-row{background:linear-gradient(135deg,rgba(255,209,102,.12),rgba(255,77,121,.12));border:1px solid rgba(255,209,102,.25);}
+.win-row.loser-row{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
+.win-row-left{display:flex;align-items:center;gap:10px;}
+.win-avatar{width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,209,102,.4);overflow:hidden;background:rgba(255,77,121,.15);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.win-avatar img{width:100%;height:100%;object-fit:cover;}
+.win-row-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:white;display:flex;align-items:center;gap:7px;}
+.win-badge{font-size:.6rem;background:linear-gradient(135deg,#ffd166,#ff9a9e);color:#1a0a10;padding:3px 9px;border-radius:20px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;}
+.win-row-pts{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;}
+.winner-row .win-row-pts{color:#ffd166;}.loser-row .win-row-pts{color:rgba(255,255,255,.35);}
+.win-msg{font-size:.86rem;color:rgba(255,200,220,.65);line-height:1.5;margin-bottom:18px;}
+.win-btn-row{display:flex;gap:10px;}
+.win-btn{flex:1;border:none;cursor:pointer;border-radius:60px;padding:13px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;transition:all .18s;letter-spacing:.02em;}
+.win-btn-share{background:linear-gradient(135deg,#ffd166,#ff9a9e);color:#1a0a10;box-shadow:0 6px 20px rgba(255,209,102,.25);}
+.win-btn-share:active{transform:scale(.96);}
+.win-btn-play{background:rgba(255,255,255,.08);color:white;border:1px solid rgba(255,255,255,.14);}
+.win-btn-play:active{transform:scale(.96);}
+/* SHARE CARD (offscreen for canvas capture) */
+#shareCardWrap{position:fixed;left:-9999px;top:100px;width:400px;background:linear-gradient(145deg,#1a0a10 0%,#0d0030 100%);padding:48px 34px 42px;border-radius:28px;display:flex;flex-direction:column;align-items:center;text-align:center;font-family:'DM Sans',sans-serif;}
+.sc-app-label{font-size:.65rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,200,220,.3);font-weight:700;margin-bottom:16px;}
+.sc-couple{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:rgba(255,200,220,.75);margin-bottom:6px;}
+.sc-divider{width:50px;height:2px;background:linear-gradient(90deg,var(--rose),#c77dff);border-radius:2px;margin:0 auto 20px;}
+.sc-winner-section{margin-bottom:18px;}
+.sc-winner-label{font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:#ffd166;font-weight:700;margin-bottom:5px;}
+.sc-trophy-big{font-size:3rem;display:block;margin-bottom:6px;}
+.sc-winner{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;color:white;line-height:1.1;}
+.sc-score-row{display:flex;gap:14px;width:100%;margin-bottom:0;}
+.sc-score-box{flex:1;border-radius:16px;padding:14px 10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);}
+.sc-score-box.won{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.3);}
+.sc-av{width:44px;height:44px;border-radius:50%;margin:0 auto 8px;border:2px solid rgba(255,209,102,.3);overflow:hidden;background:rgba(255,77,121,.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem;}
+.sc-av img{width:100%;height:100%;object-fit:cover;}
+.sc-sname{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,200,220,.45);font-weight:600;margin-bottom:4px;}
+.sc-spts{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;}
+.sc-score-box.won .sc-spts{color:#ffd166;}.sc-score-box .sc-spts{color:rgba(255,255,255,.25);}
+.sc-lvl{font-size:.68rem;color:rgba(255,200,220,.35);margin-top:18px;letter-spacing:.1em;}
+.sc-footer-txt{font-size:.62rem;color:rgba(255,255,255,.15);font-weight:500;margin-top:8px;letter-spacing:.12em;}
+/* ADMOB BANNER SLOT */
+#admob-banner{width:100%;max-width:480px;min-height:50px;display:flex;align-items:center;justify-content:center;margin-top:12px;z-index:10;position:relative;}
+/* SHARE SHEET (custom fallback) */
+.share-sheet{position:fixed;bottom:0;left:0;right:0;z-index:20000;background:rgba(10,0,15,.95);backdrop-filter:blur(16px);border-radius:28px 28px 0 0;padding:24px 20px 36px;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.2,.64,1);border-top:1px solid rgba(255,77,121,.2);}
+.share-sheet.open{transform:translateY(0);}
+.share-sheet-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:white;text-align:center;margin-bottom:20px;}
+.share-apps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.share-app{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:.15s;}
+.share-app:active{transform:scale(.9);}
+.share-app-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;}
+.share-app-label{font-size:.65rem;font-weight:600;color:rgba(255,200,220,.7);letter-spacing:.04em;}
+.share-sheet-close{width:100%;border:none;cursor:pointer;border-radius:60px;padding:13px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);letter-spacing:.02em;}
+.share-backdrop{position:fixed;inset:0;z-index:19999;background:transparent;display:none;}
+.share-backdrop.open{display:block;}
+@media(max-width:440px){.screen{padding:24px 15px 28px;border-radius:32px;}h1{font-size:2rem;}.spin-btn{width:132px;height:132px;}.challenge-text{font-size:1rem;}}
+</style>
+</head>
+<body>
+<div class="bg-layer"></div>
+<div class="bg-stars"></div>
+<div id="ptToast" class="pt-toast"></div>
+
+<!-- CUSTOM SHARE SHEET -->
+<div class="share-backdrop" id="shareBackdrop"></div>
+<div class="share-sheet" id="shareSheet">
+  <div class="share-sheet-title">📸 Share Result</div>
+  <div class="share-apps">
+    <div class="share-app" onclick="shareToApp('whatsapp')">
+      <div class="share-app-icon" style="background:#25D366">💬</div>
+      <div class="share-app-label">WhatsApp</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('facebook')">
+      <div class="share-app-icon" style="background:#1877F2">👥</div>
+      <div class="share-app-label">Facebook</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('instagram')">
+      <div class="share-app-icon" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">📷</div>
+      <div class="share-app-label">Instagram</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('tiktok')">
+      <div class="share-app-icon" style="background:#010101">🎵</div>
+      <div class="share-app-label">TikTok</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('twitter')">
+      <div class="share-app-icon" style="background:#000">𝕏</div>
+      <div class="share-app-label">Twitter / X</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('snapchat')">
+      <div class="share-app-icon" style="background:#FFFC00">👻</div>
+      <div class="share-app-label">Snapchat</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('youtube')">
+      <div class="share-app-icon" style="background:#FF0000">▶️</div>
+      <div class="share-app-label">YouTube</div>
+    </div>
+    <div class="share-app" onclick="shareToApp('copy')">
+      <div class="share-app-icon" style="background:rgba(255,77,121,.2);border:1px solid rgba(255,77,121,.3)">📋</div>
+      <div class="share-app-label">Copy Link</div>
+    </div>
+  </div>
+  <button class="share-sheet-close" onclick="closeShareSheet()">Cancel</button>
+</div>
+
+<!-- LEVEL UP OVERLAY -->
+<div class="levelup-overlay" id="levelupOverlay">
+  <div class="levelup-card">
+    <span class="levelup-star" id="levelupStar">⭐</span>
+    <div class="levelup-title">Level Up!</div>
+    <div class="levelup-num" id="levelupNum">2</div>
+    <div class="levelup-tier" id="levelupTier" style="color:#66bb6a;">🌱 Easy</div>
+    <div class="levelup-msg" id="levelupMsg">Keep playing to unlock harder challenges!</div>
+    <button class="levelup-btn" id="levelupContinueBtn">🎮 Continue Playing</button>
+  </div>
+</div>
+
+<!-- WIN OVERLAY -->
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <span class="win-trophy" id="winTrophy">🏆</span>
+    <div class="win-title" id="winTitle">Champion!</div>
+    <div class="win-subtitle" id="winSubtitle">Love Challenge · Game Over</div>
+    <div class="win-names">
+      <div class="win-row winner-row">
+        <div class="win-row-left">
+          <div class="win-avatar" id="winAv1"><span id="winAvEmoji1">💕</span></div>
+          <span class="win-row-name" id="winnerName">Player 1 <span class="win-badge">WINNER</span></span>
+        </div>
+        <span class="win-row-pts" id="winnerPts">100</span>
+      </div>
+      <div class="win-row loser-row">
+        <div class="win-row-left">
+          <div class="win-avatar" id="winAv2"><span id="winAvEmoji2">💕</span></div>
+          <span class="win-row-name" id="loserName">Player 2</span>
+        </div>
+        <span class="win-row-pts" id="loserPts">60</span>
+      </div>
+    </div>
+    <div class="win-msg" id="winMsg">What a beautiful game!</div>
+    <div class="win-btn-row">
+      <button class="win-btn win-btn-share" id="winShareBtn">📸 Share</button>
+      <button class="win-btn win-btn-play" id="winPlayAgainBtn">▶ Play</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE CARD (offscreen) -->
+<div id="shareCardWrap">
+  <div class="sc-app-label">Love Challenge Game</div>
+  <div class="sc-couple" id="scCouple">Alex ❤️ Jordan</div>
+  <div class="sc-divider"></div>
+  <div class="sc-winner-section">
+    <div class="sc-winner-label">🏆 Winner</div>
+    <span class="sc-trophy-big">🏆</span>
+    <div class="sc-winner" id="scWinner">Alex</div>
+  </div>
+  <div class="sc-score-row">
+    <div class="sc-score-box" id="scBox1">
+      <div class="sc-av" id="scAv1"><span id="scAvEmoji1">💕</span></div>
+      <div class="sc-sname" id="scSname1">Player 1</div>
+      <div class="sc-spts" id="scSpts1">100</div>
+    </div>
+    <div class="sc-score-box" id="scBox2">
+      <div class="sc-av" id="scAv2"><span id="scAvEmoji2">💕</span></div>
+      <div class="sc-sname" id="scSname2">Player 2</div>
+      <div class="sc-spts" id="scSpts2">60</div>
+    </div>
+  </div>
+  <div class="sc-lvl" id="scLvl">Level 1 · Easy</div>
+  <div class="sc-footer-txt">Play Together · Love Challenge ❤️</div>
+</div>
+
+<!-- HIDDEN FILE INPUTS -->
+<input type="file" id="avatarInput1" accept="image/*">
+<input type="file" id="avatarInput2" accept="image/*">
+
+<div class="game-container" id="app">
+
+  <!-- HOME SCREEN -->
+  <div id="homeScreen" class="screen">
+    <span class="home-emoji">💕</span>
+    <h1>Love Challenge</h1>
+    <p class="tagline">for two hearts · spin · connect</p>
+
+    <!-- AVATARS with inline name edit -->
+    <div class="couple-avatars">
+      <div class="avatar-wrap">
+        <div class="avatar-circle" id="avatarCircle1" onclick="pickAvatar(1)">
+          <img id="avatarImg1" src="" style="display:none">
+          <span class="avatar-emoji" id="avatarEmoji1">💕</span>
+        </div>
+        <span class="avatar-edit-hint">tap to change</span>
+        <input class="avatar-name-input" id="p1NameHome" value="Player 1" maxlength="14">
+      </div>
+      <span class="couple-heart-big">❤️</span>
+      <div class="avatar-wrap">
+        <div class="avatar-circle" id="avatarCircle2" onclick="pickAvatar(2)">
+          <img id="avatarImg2" src="" style="display:none">
+          <span class="avatar-emoji" id="avatarEmoji2">💞</span>
+        </div>
+        <span class="avatar-edit-hint">tap to change</span>
+        <input class="avatar-name-input" id="p2NameHome" value="Player 2" maxlength="14">
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:16px;">
+      <span class="level-badge easy" id="homeLevelBadge">⭐ Level 1 · Easy</span>
+    </div>
+    <button class="btn btn-primary" id="startBtn">✨ Start Game</button>
+    <button class="btn btn-ghost" id="settingsBtn">⚙️ Settings</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameScreen" class="screen hidden">
+    <!-- Level bar -->
+    <div class="level-bar-wrap">
+      <span class="level-badge easy" id="gameLevelBadge" style="white-space:nowrap;">⭐ Lv 1</span>
+      <div class="level-bar-outer"><div class="level-bar-inner easy" id="levelBarInner" style="width:1%"></div></div>
+      <span style="font-size:.65rem;font-weight:700;color:var(--mid);opacity:.5;white-space:nowrap;" id="levelProgress">1/100</span>
+    </div>
+    <!-- Score bar with avatars -->
+    <div class="score-bar">
+      <div class="score-pill" id="pill1">
+        <div class="score-pill-av" id="pillAv1"><span id="pillEmoji1">💕</span></div>
+        <div class="s-info"><span class="s-name" id="sName1">P1</span><span class="s-pts" id="sPts1">0</span></div>
+      </div>
+      <div class="score-vs">VS</div>
+      <div class="score-pill" id="pill2">
+        <div class="s-info" style="align-items:flex-end"><span class="s-name" id="sName2">P2</span><span class="s-pts" id="sPts2">0</span></div>
+        <div class="score-pill-av" id="pillAv2"><span id="pillEmoji2">💞</span></div>
+      </div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-row">
+        <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog1" style="width:0%"></div></div>
+        <div class="prog-bar-outer"><div class="prog-bar-inner" id="prog2" style="width:0%"></div></div>
+      </div>
+    </div>
+    <!-- Turn banner with avatar -->
+    <div class="turn-banner">
+      <div class="turn-avatar-mini" id="turnAvMini"><span class="turn-avatar-mini-emoji" id="turnAvEmoji">💕</span></div>
+      <div class="turn-text">
+        <div class="turn-label">It's your turn</div>
+        <div class="turn-name" id="turnName">Player 1</div>
+      </div>
+    </div>
+    <!-- Category pills -->
+    <div class="cat-pills">
+      <div class="cat-pill active" data-cat="all">🎲 All</div>
+      <div class="cat-pill" data-cat="truth">💖 Truth</div>
+      <div class="cat-pill" data-cat="dare">🔥 Dare</div>
+      <div class="cat-pill" data-cat="funny">😂 Funny</div>
+      <div class="cat-pill" data-cat="romantic">💜 Romantic</div>
+    </div>
+    <!-- Spin button -->
+    <div class="spin-wrap">
+      <button class="spin-btn" id="spinBtn">
+        <span class="spin-btn-emoji">🎲</span>
+        <span class="spin-btn-label">SPIN</span>
+      </button>
+    </div>
+    <!-- Challenge card -->
+    <div class="challenge-card">
+      <span class="challenge-badge badge-ready" id="cBadge">✨ READY</span>
+      <div class="challenge-text" id="cText">Tap SPIN to begin your love challenge!</div>
+    </div>
+    <div class="action-hint" id="actionHint">tap spin to get a challenge</div>
+    <!-- Reward ad: Change Task -->
+    <div class="change-task-btn hidden" id="changeTaskBtn">🎬 Watch Ad · Change Task</div>
+    <!-- Dare timer -->
+    <div class="timer-wrap hidden" id="timerWrap">
+      <div class="timer-ring-wrap">
+        <svg class="timer-svg" width="68" height="68" viewBox="0 0 68 68">
+          <circle class="timer-track" cx="34" cy="34" r="30"/>
+          <circle class="timer-arc" id="timerArc" cx="34" cy="34" r="30"/>
+        </svg>
+        <div class="timer-num" id="timerNum">30</div>
+      </div>
+      <div class="timer-label">seconds to complete dare</div>
+      <div class="timer-btns">
+        <button class="timer-btn" id="timerStart">▶ Start</button>
+        <button class="timer-btn" id="timerReset">↺ Reset</button>
+      </div>
+    </div>
+    <!-- Action buttons -->
+    <div class="btn-row" id="completeRow" style="display:none">
+      <button class="btn btn-primary btn-sm" id="completeBtn">✅ Challenge Complete! (+10 pts)</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost btn-sm" id="nextBtn">➡️ Pass Turn</button>
+      <button class="btn btn-ghost btn-sm" id="shareBtn">📸 Share Score</button>
+    </div>
+    <div style="text-align:center;margin-top:4px;">
+      <button class="btn btn-ghost btn-sm" id="homeBtn" style="width:auto;padding:10px 22px;font-size:.82rem;display:inline-block;">🏠 Home</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div id="settingsScreen" class="screen hidden">
+    <div class="settings-title">⚙️ Settings</div>
+    <div class="section-sep">Sound</div>
+    <div class="setting-row"><label>🎵 Background Music</label><div class="toggle" id="musicToggle"></div></div>
+    <div class="setting-row"><label>🎚 Music Volume</label><input type="range" class="vol-slider" id="musicVol" min="0" max="100" value="60"></div>
+    <div class="setting-row"><label>🔊 Sound FX</label><div class="toggle" id="sfxToggle"></div></div>
+    <div class="setting-row"><label>📳 Vibration</label><div class="toggle" id="vibroToggle"></div></div>
+    <div class="section-sep">Data</div>
+    <button class="btn btn-ghost" id="resetScoreBtn">🔢 Reset Scores</button>
+    <button class="btn btn-ghost" id="resetProgressBtn">⭐ Reset Level Progress</button>
+    <button class="btn btn-ghost" id="resetAllBtn">🗑 Reset All Data</button>
+    <button class="btn btn-primary" id="saveSettingsBtn" style="margin-top:8px">← Save & Back</button>
+  </div>
+
+</div>
+
+<!-- ADMOB BANNER SLOT — developer: inject banner ad here -->
+<div id="admob-banner">
+  <!-- AdMob banner renders here. In WebView, call: AdMob.showBanner() -->
+  <!-- Placeholder shown only in browser preview -->
+  <div style="width:320px;height:50px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,77,121,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:rgba(255,200,220,.3);letter-spacing:.08em;font-family:'DM Sans',sans-serif;">ADMOB BANNER · 320×50</div>
+</div>
+
+<script>
+// =================================================
+// ADMOB BRIDGE — Modular Integration Layer
+// Developer: Replace these stubs with real WebView bridge calls
+// =================================================
+window.AdMobBridge = {
+  // Called every 4 completed games — show interstitial
+  showInterstitial: function() {
+    // Android: Android.showInterstitial()
+    // iOS: window.webkit.messageHandlers.admob.postMessage({type:'interstitial'})
+    console.log('[AdMob] showInterstitial triggered');
+    // STUB: simulate with alert in browser
+    // alert('Interstitial Ad would show here');
+  },
+  // Called when user taps "Change Task" — show reward ad
+  // callback(rewarded:bool) called after ad completes/closes
+  showRewardAd: function(callback) {
+    // Android: Android.showRewardAd()
+    // iOS: window.webkit.messageHandlers.admob.postMessage({type:'reward'})
+    console.log('[AdMob] showRewardAd triggered');
+    // STUB: simulate reward granted after 1s
+    setTimeout(() => callback(true), 500);
+  }
+};
+// Developer hook: call this from native side after reward ad completes
+window.onRewardAdComplete = function() { onRewardGranted(); };
+// Developer hook: call this from native side after interstitial closes
+window.onInterstitialClosed = function() { console.log('[AdMob] Interstitial closed'); };
+// =================================================
+
+// ===== CHALLENGE DATA =====
+const DB={
+  truth:["What's the most romantic thing I've ever done for you?","When did you first realize you were falling for me?","What's one thing you wish I knew without having to tell me?","What's your favorite memory of us together?","What small thing I do makes you feel most loved?","What was your very first impression of me?","What's something weirdly attractive about me?","What's the biggest lesson our relationship has taught you?","What's a romantic fantasy you've imagined about us?","What do you think about right before you fall asleep?","What's something you want to tell me but always hold back?","What's your love language and do I speak it well?","What's the funniest thing I've ever said or done?","What do you admire most about me as a person?","What's one thing you'd change about our first date?","What's a hidden talent you haven't shown me yet?","When do you feel most connected to me?","What's one thing you appreciate that I do for you every day?","What surprise would make you feel the most special?","What do you love most about how we communicate?"],
+  dare:["Give your partner a 1-minute shoulder massage.","Whisper something sweet in your partner's ear.","Imitate how your partner laughs as accurately as possible.","Sing the chorus of a romantic song out loud.","Feed your partner something with your eyes closed.","Write a 2-line poem about your partner right now.","Do 10 slow dancing steps holding your partner's hand.","Tell your partner 5 things you love about them in 30 seconds.","Stare into each other's eyes for 15 seconds without laughing.","Give your partner a compliment about something they wore recently.","Make a funny animal sound and have your partner guess what it is.","Act out a 15-second dramatic love scene.","Create a cute nickname for your partner and use it all evening.","Send your partner a voice note saying something romantic.","Give your partner a genuine forehead kiss.","Promise to do one chore your partner dislikes this week.","Draw a portrait of your partner however badly on paper.","Tell partner what you were thinking the last time you saw them dressed up.","Make a heart shape with your hands and take a selfie together.","Re-enact the first time you held hands together."],
+  funny:["Imitate your partner ordering food at a fancy restaurant.","Do your best celebrity impression — partner has to guess who.","Talk like a robot for the next 2 challenges.","Make the most dramatic face possible and hold it for 5 seconds.","Waddle like a penguin from one side of the room to the other.","Act like a TV shopping host trying to sell the nearest random object.","Try to lick your elbow — yes, seriously attempt it.","Impersonate how your partner walks — try to be accurate!","Make an alien greeting using only weird sounds and hand gestures.","Do a dramatic reading of the last text message you sent.","Pout like a baby for 10 full seconds without cracking up.","Recreate your partner's most used facial expression.","Do your worst dance move right now.","Tell the worst pun you know — the more cringe, the better.","Describe your relationship using only animal sounds.","Make a funny rhyme using your partner's name on the spot.","Dramatically wink and blow a kiss like a 1940s movie star.","Do a slow motion replay of the last thing you physically did.","Act out what you'd look like if you were extremely tiny.","Pretend you're a news anchor reporting on your relationship."],
+  romantic:["Tell your partner what you love most about the future you imagine together.","Describe the exact moment you knew this relationship was something special.","What's one promise you want to make to your partner right now?","Write your partner an imaginary love letter and read it aloud.","Describe your partner using only poetic comparisons — nature, stars, etc.","What's one adventure you want to experience with your partner this year?","Tell your partner one way they've made you a better person.","Look your partner in the eyes and say three sentences starting with I love that you.","Describe the perfect day you'd love to spend with your partner.","Tell your partner what's one thing about them that still surprises you.","What does home feel like when you're with your partner? Describe it.","Tell your partner your favorite ordinary moment you've shared.","Compliment something your partner is insecure about — make it heartfelt.","Tell your partner one dream you have for your relationship in 5 years.","Say: I'm grateful for you because — and complete it three times."],
+};
+
+// Level-difficulty pools
+const LEVEL_DB={
+  easy:{
+    truth:["What's the most romantic thing I've ever done for you?","When did you first realize you were falling for me?","What's your favorite memory of us together?","What small thing I do makes you feel most loved?","What was your very first impression of me?","When do you feel most connected to me?","What do you think about right before you fall asleep?","What's the funniest thing I've ever said or done?","What do you admire most about me as a person?","What's a hidden talent you haven't shown me yet?"],
+    dare:["Give your partner a 1-minute shoulder massage.","Whisper something sweet in your partner's ear.","Sing the chorus of a romantic song out loud.","Tell your partner 5 things you love about them in 30 seconds.","Give your partner a compliment about something they wore recently.","Give your partner a genuine forehead kiss.","Make a heart shape with your hands and take a selfie together.","Tell partner what you were thinking the last time you saw them dressed up.","Do 10 slow dancing steps holding your partner's hand.","Stare into each other's eyes for 15 seconds without laughing."],
+    funny:["Imitate your partner ordering food at a fancy restaurant.","Do your best celebrity impression — partner has to guess who.","Make the most dramatic face possible and hold it for 5 seconds.","Waddle like a penguin from one side of the room to the other.","Do a dramatic reading of the last text message you sent.","Tell the worst pun you know — the more cringe, the better.","Make a funny rhyme using your partner's name on the spot.","Do a slow motion replay of the last thing you physically did.","Describe your relationship using only animal sounds.","Talk like a robot for the next 2 challenges."],
+    romantic:["Tell your partner what you love most about the future you imagine together.","Describe the exact moment you knew this relationship was something special.","Write your partner an imaginary love letter and read it aloud.","Tell your partner one way they've made you a better person.","What does home feel like when you're with your partner? Describe it.","Say: I'm grateful for you because — and complete it three times.","Describe your partner using only poetic comparisons — nature, stars, etc.","Tell your partner your favorite ordinary moment you've shared.","Look your partner in the eyes and say three sentences starting with I love that you.","Tell your partner one dream you have for your relationship in 5 years."]
+  },
+  medium:{
+    truth:["What's something you've never told anyone about yourself but want to tell me?","What's your biggest fear about our relationship?","If you could change one thing about the way we communicate, what would it be?","Have you ever been jealous of someone in my life?","What's a habit of mine you secretly find annoying?","Is there something you've been afraid to ask me?","What's the most vulnerable you've ever felt around me?","What's one thing you've regretted saying to me?","What do you wish I'd noticed more about you?","What's the most scared you've been in our relationship?"],
+    dare:["Act out a 30-second dramatic love scene with full emotion.","Feed your partner a snack with your eyes closed — no peeking.","Re-enact the first time you held hands together.","Promise to do one chore your partner dislikes for a whole week.","Draw a portrait of your partner and show it.","Send your partner a 30-second voice note saying something deeply romantic.","Do 20 jumping jacks while listing things you love about your partner.","Impersonate your partner and let them rate the accuracy out of 10.","Create a romantic nickname for your partner and explain why you chose it.","Describe your partner in only 3 words — then justify each word."],
+    funny:["Act out both sides of your worst argument in a silly voice.","Do an impression of your partner waking up in the morning.","Act out your partner's reaction when they can't find their phone.","Invent a superhero name for your partner based on their worst habit.","Do a full 60-second advertisement for your relationship.","Perform 30 seconds of interpretive dance representing your first date.","Reenact your most embarrassing moment together.","Act like you're in a silent film — no words, only dramatic expressions.","Pretend you're being interviewed on a talk show about your love story.","Do a 1-minute cooking show where the dish is 'love'."],
+    romantic:["What's one promise you want to make to your partner right now?","Tell your partner: what's one thing about them that still surprises you?","What's one adventure you absolutely want to experience with your partner?","Compliment something your partner is insecure about — make it deeply heartfelt.","What's the one moment in our relationship you'd relive if you could?","Tell your partner exactly what you'll miss most if you're apart for a week.","Describe the version of yourself you become when you're around your partner.","Write a 4-line poem about your partner right now and read it aloud.","If you could give your partner a superpower, what would it be and why?","What's one thing your partner does that means more to you than any words could?"]
+  },
+  hard:{
+    truth:["What's the biggest lie you've ever told me, even a small one?","Is there anything about your past you're worried would change how I see you?","What's the most you've ever doubted our relationship?","Tell me one thing you've never admitted you needed from me.","When have you felt most taken for granted in our relationship?","What's one thing you've compared me to in your past relationships?","Is there a part of yourself you feel I don't fully accept?","What's one thing you've sacrificed for this relationship that you haven't mentioned?","Have you ever considered ending our relationship? When and why?","What's something you've forgiven me for that still bothers you a little?"],
+    dare:["Give your partner a full 3-minute back massage without stopping.","Recreate your first kiss — location, angle, everything you remember.","Let your partner go through your phone camera roll for 1 minute.","Whisper your deepest fear into your partner's ear.","Let your partner style your hair however they want.","Tell your partner the one physical thing about them you find irresistible.","Do a 15-second impression of your partner at their most stressed.","Let your partner draw something on your arm with a pen.","Tell your partner: three things you've never complimented them on.","Hold your partner's face in your hands and say one deeply honest thing."],
+    funny:["Do a full 1-minute stand-up comedy routine about your relationship.","Perform a dramatic monologue from the perspective of your partner's pet.","Reenact how your partner acts when they're hungry — full drama.","Perform 30 seconds of interpretive dance representing your first date.","Describe your relationship as if you were writing a Yelp review — read it aloud.","Do a dramatic reading of your partner's most dramatic text ever sent.","Create and perform the official anthem of your relationship — right now.","Act out what 'us in 30 years' looks like in 60 seconds.","Do a nature documentary narration of your partner's current behavior.","Invent a TV show based on your relationship and pitch it to your partner."],
+    romantic:["Write a vow to your partner right now — read it aloud slowly.","Tell your partner the exact moment you knew you loved them.","What's the bravest thing you've done for this relationship?","If our relationship were a movie, what would the title and tagline be?","Tell your partner one way they've healed something in you.","Read your partner the most meaningful text they've ever sent you.","Tell your partner: I choose you because... and complete it with 5 reasons.","Describe the future life you imagine for both of you in detail.","What's one thing you'd tell the earlier version of yourself before you met your partner?","Tell your partner one thing that makes you feel completely safe with them."]
+  },
+  extreme:{
+    truth:["What's something about yourself you've been too scared to admit out loud — even to yourself?","Have you ever tested my loyalty? What happened?","What's the most jealous you've ever been — about anyone?","Is there a version of your life that didn't include me? What did it look like?","What's the bravest emotional thing you've never said to me?","What's one desire you have that you've been afraid to express to me?","Have you ever felt truly lonely while being with me?","What's the one moment in our relationship you wish had gone differently?","What's something about loving me that you find difficult?","Have you ever compared our relationship to someone else's and felt it was lacking?"],
+    dare:["Slow dance together to the first song that plays on shuffle — full 60 seconds, eyes closed.","Re-read the most emotional text conversation you've ever had together.","Tell your partner something you've practiced saying but never had the courage to say.","Let your partner ask you any one question — you must answer 100% honestly.","Do a trust fall — your partner must catch you.","Tell your partner every physical thing you love about them — minimum 5 specific things.","Hold your partner's face in your hands and say one deeply honest thing.","Play 30 seconds of your relationship song and just sit together in silence.","Put your phone away for the rest of the game — no exceptions.","Write your partner's name somewhere visible on your body — pen is fine."],
+    funny:["Act out both sides of your worst argument as a soap opera.","Do an impression of your partner doing something they hate.","Act out how the story of your relationship would look as a silent movie.","Describe your relationship as if you were writing a Yelp review — read it aloud.","Act like your partner is a famous celebrity and you're their assistant for 2 minutes.","Perform a dramatic monologue from the perspective of your partner's pet.","Do a 60-second advertisement for your relationship as if it's on TV.","Act out what 'us in 30 years' looks like in 60 seconds.","Do a rap about your relationship — at least 4 lines, right now.","Pretend you're a tour guide showing someone around your partner's quirks."],
+    romantic:["Tell your partner the one moment in your life they don't know about that made you certain about them.","If you had to write the dedication of a book about your life, what would you write for your partner?","Tell your partner: the specific way they love you that no one else has.","Describe your partner's soul — not their appearance, not their actions, their actual soul.","What's the one thing about loving your partner that has changed who you are forever?","If you could give your partner a letter to read on your hardest day apart, what would it say?","Tell your partner one thing you believe about your future together that you've never said out loud.","Tell your partner: this is what loving you has taught me about love itself.","Look your partner in the eyes and say everything you'd want them to know if you only had one minute.","Tell your partner one thing that makes you feel completely safe with them."]
+  }
+};
+
+// ===== GAME STATE =====
+const S={p1:'Player 1',p2:'Player 2',score1:0,score2:0,turn:1,music:true,sfx:true,vibro:true,musicVol:.6,sfxVol:.6,category:'all',lastChallenge:{type:'ready',text:'Tap SPIN to begin your love challenge!'},avatar1:'',avatar2:''};
+function save(){localStorage.setItem('lcv3',JSON.stringify(S));}
+function load(){try{const d=JSON.parse(localStorage.getItem('lcv3')||'{}');Object.assign(S,d);}catch(e){}}
+
+// ===== LEVEL STATE =====
+let currentLevel=1,highestLevelUnlocked=1;
+function loadLevelData(){try{const d=JSON.parse(localStorage.getItem('lc_level')||'{}');currentLevel=Math.min(Math.max(d.currentLevel||1,1),100);highestLevelUnlocked=Math.min(Math.max(d.highestLevelUnlocked||1,1),100);}catch(e){}console.log('Level loaded:',currentLevel,'/ Highest:',highestLevelUnlocked);}
+function saveLevelData(){localStorage.setItem('lc_level',JSON.stringify({currentLevel,highestLevelUnlocked}));}
+function resetProgress(){localStorage.removeItem('lc_level');currentLevel=1;highestLevelUnlocked=1;saveLevelData();updateLevelUI();showToast('⭐ Level progress reset!');console.log('Level progress reset.');}
+function getLevelTier(l){return l<=20?'easy':l<=50?'medium':l<=80?'hard':'extreme';}
+function getLevelTierLabel(t){return{easy:'🌱 Easy',medium:'🔥 Medium',hard:'💎 Hard',extreme:'⚡ Extreme'}[t];}
+function getLevelTierColor(t){return{easy:'#2e7d32',medium:'#e65100',hard:'#c2185b',extreme:'#7b1fa2'}[t];}
+function getLevelStar(t){return{easy:'⭐',medium:'🔥',hard:'💎',extreme:'⚡'}[t];}
+function getLevelUpMsg(l,t){const m={easy:['Warm up time! Easy challenges await. 🌸','Just getting started — enjoy the sweet challenges! 💕','Love is in the air at this level! ❤️'],medium:['Things are getting interesting now! 🔥','Medium tier unlocked — are you ready? 💫','The challenges heat up from here! 🌹'],hard:['Hard tier unlocked — only the brave continue! 💎','You two are serious! Hard challenges incoming. 🎯','The real test of love begins now! 🏆'],extreme:['EXTREME unlocked! You two are unstoppable! ⚡','Maximum difficulty — only legends reach here! 👑','The ultimate couple challenge awaits! 🔥💕']};const p=m[t];return p[Math.floor(Math.random()*p.length)];}
+
+// ===== AD TRACKING =====
+let gamesCompletedSinceAd=0; // interstitial every 4 games
+
+// ===== IMPROVED ROMANTIC MUSIC ENGINE =====
+// Rich layered music: melody + harmony + bass + rhythm — much louder and fuller
+let mCtx,mGain,mLoop,mOn=false,phraseIdx=0;
+let sCtx,sGain;
+
+function initMusic(){
+  if(!mCtx){
+    mCtx=new(window.AudioContext||window.webkitAudioContext)();
+    mGain=mCtx.createGain();
+    // Reverb via delay+feedback
+    const delay=mCtx.createDelay(.45);
+    const dGain=mCtx.createGain();dGain.gain.value=.22;
+    const fbGain=mCtx.createGain();fbGain.gain.value=.3;
+    mGain.connect(delay);delay.connect(dGain);dGain.connect(mCtx.destination);
+    delay.connect(fbGain);fbGain.connect(delay);
+    mGain.connect(mCtx.destination);
+    mGain.gain.value=S.music?S.musicVol:0;
+  }
+}
+
+// Beautiful 8-phrase romantic waltz melody
+const MELODIES=[
+  [{f:523.25,t:0},{f:659.25,t:.3},{f:783.99,t:.6},{f:1046.5,t:.9},{f:880,t:1.2},{f:783.99,t:1.5},{f:659.25,t:1.8},{f:523.25,t:2.1}],
+  [{f:440,t:0},{f:523.25,t:.32},{f:659.25,t:.64},{f:783.99,t:.96},{f:659.25,t:1.28},{f:523.25,t:1.6},{f:440,t:1.92},{f:392,t:2.24}],
+  [{f:392,t:0},{f:440,t:.28},{f:523.25,t:.56},{f:659.25,t:.84},{f:783.99,t:1.12},{f:880,t:1.4},{f:783.99,t:1.68},{f:659.25,t:1.96}],
+  [{f:659.25,t:0},{f:587.33,t:.35},{f:523.25,t:.7},{f:493.88,t:1.05},{f:440,t:1.4},{f:392,t:1.75},{f:349.23,t:2.1},{f:329.63,t:2.45}],
+  [{f:329.63,t:0},{f:392,t:.3},{f:440,t:.6},{f:523.25,t:.9},{f:587.33,t:1.2},{f:659.25,t:1.5},{f:783.99,t:1.8},{f:880,t:2.1}],
+  [{f:880,t:0},{f:783.99,t:.32},{f:659.25,t:.64},{f:587.33,t:.96},{f:523.25,t:1.28},{f:440,t:1.6},{f:392,t:1.92},{f:349.23,t:2.24}],
+  [{f:523.25,t:0},{f:493.88,t:.35},{f:440,t:.7},{f:415.3,t:1.05},{f:392,t:1.4},{f:369.99,t:1.75},{f:349.23,t:2.1},{f:329.63,t:2.45}],
+  [{f:261.63,t:0},{f:329.63,t:.3},{f:392,t:.6},{f:523.25,t:.9},{f:659.25,t:1.2},{f:783.99,t:1.5},{f:659.25,t:1.8},{f:523.25,t:2.1}],
+];
+const CHORDS=[[130.81,164.81,196,261.63],[110,138.59,164.81,220],[87.31,110,130.81,174.61],[98,123.47,146.83,196],[116.54,146.83,174.61,220],[130.81,164.81,196,261.63],[87.31,110,130.81,174.61],[98,123.47,146.83,196]];
+
+function playRomanticPhrase(idx){
+  if(!S.music||!mCtx||mCtx.state!=='running')return;
+  const now=mCtx.currentTime;
+  const mel=MELODIES[idx%8];
+  // Melody — sine + triangle blend
+  mel.forEach(({f,t})=>{
+    ['sine','triangle'].forEach((type,i)=>{
+      const o=mCtx.createOscillator(),g=mCtx.createGain();
+      o.type=type;o.frequency.value=f*(i===1?2:1);
+      const vol=i===0?.11:.035;
+      g.gain.value=0;g.gain.setTargetAtTime(vol,now+t,.04);g.gain.setTargetAtTime(0,now+t+.32,.1);
+      o.connect(g);g.connect(mGain);o.start(now+t);o.stop(now+t+.7);
+    });
+  });
+  // Rich pad chord — 4 notes sustained
+  CHORDS[idx%8].forEach((f,i)=>{
+    const o=mCtx.createOscillator(),g=mCtx.createGain();
+    o.type='sine';o.frequency.value=f;
+    const vol=[.035,.03,.025,.02][i]||.02;
+    g.gain.value=0;g.gain.setTargetAtTime(vol,now,.5);g.gain.setTargetAtTime(0,now+3.5,.7);
+    o.connect(g);g.connect(mGain);o.start(now);o.stop(now+5);
+  });
+  // Soft bass pulse
+  const bo=mCtx.createOscillator(),bg=mCtx.createGain();
+  bo.type='sine';bo.frequency.value=CHORDS[idx%8][0]/2;
+  bg.gain.value=0;bg.gain.setTargetAtTime(.045,now,.1);bg.gain.setTargetAtTime(0,now+1.5,.4);
+  bo.connect(bg);bg.connect(mGain);bo.start(now);bo.stop(now+2.5);
+}
+
+function startMusic(){
+  initMusic();
+  if(mCtx.state==='suspended')mCtx.resume();
+  if(!mOn){
+    playRomanticPhrase(phraseIdx++);
+    mLoop=setInterval(()=>playRomanticPhrase(phraseIdx++),4600);
+    mOn=true;
+  }
+}
+function stopMusic(){clearInterval(mLoop);mOn=false;}
+
+// ===== SFX =====
+function initSfx(){if(!sCtx){sCtx=new(window.AudioContext||window.webkitAudioContext)();sGain=sCtx.createGain();sGain.gain.value=S.sfxVol;sGain.connect(sCtx.destination);}if(sCtx.state==='suspended')sCtx.resume();}
+function playTone(freq,dur,type='sine',vol=.15){if(!S.sfx)return;initSfx();const o=sCtx.createOscillator(),g=sCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.value=vol;g.gain.exponentialRampToValueAtTime(.0001,sCtx.currentTime+dur);o.connect(g);g.connect(sGain);o.start();o.stop(sCtx.currentTime+dur);}
+function playSpinSfx(){playTone(880,.12,'sine',.1);setTimeout(()=>playTone(1100,.1,'sine',.08),90);}
+function playSuccessSfx(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,.25),i*75));}
+function playWinSfx(){[523,659,784,1047,1319,1047,784,1047,1319,1568].forEach((f,i)=>setTimeout(()=>playTone(f,.28,'sine',.16),i*110));}
+function playCatSfx(cat){const m={truth:[523,.35],dare:[659,.28],funny:[880,.22,'triangle'],romantic:[440,.55]};const[f,d,t='sine']=m[cat]||[659,.28];playTone(f,d,t);}
+function vibe(ms=50){if(S.vibro&&navigator.vibrate)navigator.vibrate(ms);}
+
+// ===== PARTICLES =====
+function spawnHearts(n=8){for(let i=0;i<n;i++)setTimeout(()=>{const el=document.createElement('div');el.className='heart-particle';el.innerHTML=['❤️','💖','💗','💘','💝','🌸','💞'][Math.floor(Math.random()*7)];el.style.cssText=`left:${Math.random()*90}%;bottom:${Math.random()*15}%;font-size:${.9+Math.random()*1.1}rem;animation-duration:${4+Math.random()*2}s`;document.body.appendChild(el);setTimeout(()=>el.remove(),6500);},i*55);}
+function spawnConfetti(n=60){for(let i=0;i<n;i++)setTimeout(()=>{const el=document.createElement('div');el.className='confetti-p';el.style.cssText=`left:${Math.random()*100}%;top:-10px;background:hsl(${Math.random()*360},80%,60%);width:${4+Math.random()*8}px;height:${4+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.5+Math.random()*2}s`;document.body.appendChild(el);setTimeout(()=>el.remove(),3500);},i*18);}
+
+// ===== AVATAR SYSTEM =====
+// avatarData: base64 images or '' for emoji fallback
+const AVATAR_EMOJIS = ['💕','💞','🌹','💫','🦋','🌸','✨','💎','🔥','👑'];
+let avatarData1='', avatarData2='';
+
+function pickAvatar(n){document.getElementById('avatarInput'+n).click();}
+
+function handleAvatarFile(n,file){
+  if(!file||!file.type.startsWith('image/'))return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const data=e.target.result;
+    if(n===1){avatarData1=data;S.avatar1=data;}
+    else{avatarData2=data;S.avatar2=data;}
+    applyAvatars();
+    save();
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyAvatars(){
+  // Home circles
+  setAvatarEl('avatarImg1','avatarEmoji1',avatarData1,'💕');
+  setAvatarEl('avatarImg2','avatarEmoji2',avatarData2,'💞');
+  // Score pills
+  setAvatarPill('pillAv1','pillEmoji1',avatarData1,'💕');
+  setAvatarPill('pillAv2','pillEmoji2',avatarData2,'💞');
+  // Turn mini
+  updateTurnAvatarUI();
+}
+
+function setAvatarEl(imgId,emojiId,data,fallback){
+  const img=document.getElementById(imgId),em=document.getElementById(emojiId);
+  if(!img||!em)return;
+  if(data){img.src=data;img.style.display='block';em.style.display='none';}
+  else{img.style.display='none';em.style.display='block';em.textContent=fallback;}
+}
+function setAvatarPill(pillId,emojiId,data,fallback){
+  const pill=document.getElementById(pillId);if(!pill)return;
+  const existing=pill.querySelector('img');
+  if(data){
+    if(!existing){const i=document.createElement('img');i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';pill.appendChild(i);}
+    pill.querySelector('img').src=data;
+    const em=document.getElementById(emojiId);if(em)em.style.display='none';
+  } else {
+    if(existing)existing.remove();
+    const em=document.getElementById(emojiId);if(em){em.style.display='';em.textContent=fallback;}
+  }
+}
+function updateTurnAvatarUI(){
+  const isP1=S.turn===1;
+  const data=isP1?avatarData1:avatarData2;
+  const fallback=isP1?'💕':'💞';
+  const mini=document.getElementById('turnAvMini');
+  const em=document.getElementById('turnAvEmoji');
+  if(!mini)return;
+  const existing=mini.querySelector('img');
+  if(data){
+    if(!existing){const i=document.createElement('img');i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';mini.appendChild(i);}
+    mini.querySelector('img').src=data;
+    if(em)em.style.display='none';
+  } else {
+    if(existing)existing.remove();
+    if(em){em.style.display='';em.textContent=fallback;}
+  }
+}
+function updateWinAvatars(p1wins){
+  const wData=p1wins?avatarData1:avatarData2,lData=p1wins?avatarData2:avatarData1;
+  const wFall=p1wins?'💕':'💞',lFall=p1wins?'💞':'💕';
+  setWinAv('winAv1','winAvEmoji1',wData,wFall);
+  setWinAv('winAv2','winAvEmoji2',lData,lFall);
+  setShareAv('scAv1','scAvEmoji1',p1wins?avatarData1:avatarData2,wFall);
+  setShareAv('scAv2','scAvEmoji2',p1wins?avatarData2:avatarData1,lFall);
+}
+function setWinAv(id,emId,data,fallback){
+  const el=document.getElementById(id),em=document.getElementById(emId);if(!el)return;
+  const existing=el.querySelector('img');
+  if(data){if(!existing){const i=document.createElement('img');i.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';el.appendChild(i);}el.querySelector('img').src=data;if(em)em.style.display='none';}
+  else{if(existing)existing.remove();if(em){em.style.display='';em.textContent=fallback;}}
+}
+function setShareAv(id,emId,data,fallback){setWinAv(id,emId,data,fallback);}
+
+// ===== CHALLENGE LOGIC =====
+const badgeClass={truth:'badge-truth',dare:'badge-dare',funny:'badge-funny',romantic:'badge-romantic',ready:'badge-ready'};
+const badgeEmoji={truth:'💖 TRUTH',dare:'🔥 DARE',funny:'😂 FUNNY',romantic:'💜 ROMANTIC',ready:'✨ READY'};
+function getChallenge(cat){
+  const tier=getLevelTier(currentLevel);
+  const pool=LEVEL_DB[tier];
+  const cats=cat==='all'?(tier==='extreme'?['truth','dare','dare','funny','romantic','dare']:['truth','dare','dare','dare','funny','romantic']):[cat];
+  const chosen=cats[Math.floor(Math.random()*cats.length)];
+  const arr=pool[chosen]||DB[chosen];
+  return{type:chosen,text:arr[Math.floor(Math.random()*arr.length)]};
+}
+function showChallenge(c){
+  const badge=document.getElementById('cBadge'),text=document.getElementById('cText');
+  badge.className='challenge-badge '+(badgeClass[c.type]||'badge-ready');
+  badge.textContent=badgeEmoji[c.type]||c.type;
+  text.style.opacity='0';text.style.transform='translateY(8px)';
+  setTimeout(()=>{text.textContent=c.text;text.style.transition='all .35s ease';text.style.opacity='1';text.style.transform='translateY(0)';},80);
+  const tw=document.getElementById('timerWrap');
+  if(c.type==='dare'){tw.classList.remove('hidden');resetTimer();}else tw.classList.add('hidden');
+  // Show "Change Task" reward ad button only when challenge is active
+  const ctBtn=document.getElementById('changeTaskBtn');
+  if(ctBtn)ctBtn.classList.toggle('hidden',c.type==='ready');
+  S.lastChallenge=c;save();
+}
+
+// ===== TURN & SCORE =====
+let completedThisTurn=false;
+function updateScoreUI(){
+  document.getElementById('sPts1').textContent=S.score1;
+  document.getElementById('sPts2').textContent=S.score2;
+  document.getElementById('prog1').style.width=S.score1+'%';
+  document.getElementById('prog2').style.width=S.score2+'%';
+  document.getElementById('pill1').classList.toggle('active-turn',S.turn===1);
+  document.getElementById('pill2').classList.toggle('active-turn',S.turn===2);
+}
+function updateTurnUI(){
+  document.getElementById('turnName').textContent=S.turn===1?S.p1:S.p2;
+  updateScoreUI();updateTurnAvatarUI();
+  const canComplete=S.lastChallenge.type!=='ready'&&!completedThisTurn;
+  document.getElementById('completeRow').style.display=canComplete?'flex':'none';
+  document.getElementById('actionHint').textContent=canComplete?'complete the challenge to earn 10 points ↑':'tap spin for a new challenge · or pass turn';
+}
+function updateLevelUI(){
+  const tier=getLevelTier(currentLevel);
+  const star=getLevelStar(tier);
+  const isMax=currentLevel>=100;
+  const label=isMax?'🔥 Max Level 100!':star+' Level '+currentLevel+' · '+tier.charAt(0).toUpperCase()+tier.slice(1);
+  const gameLabel=isMax?'🔥 Max!':star+' Lv '+currentLevel;
+  const hb=document.getElementById('homeLevelBadge');
+  if(hb){hb.className='level-badge '+tier;hb.textContent=label;if(isMax)hb.classList.add('max-level-glow');else hb.classList.remove('max-level-glow');}
+  const gb=document.getElementById('gameLevelBadge');
+  if(gb){gb.className='level-badge '+tier;gb.textContent=gameLabel;if(isMax)gb.classList.add('max-level-glow');else gb.classList.remove('max-level-glow');}
+  const bar=document.getElementById('levelBarInner');
+  if(bar){bar.className='level-bar-inner '+tier;bar.style.width=currentLevel+'%';}
+  const prog=document.getElementById('levelProgress');
+  if(prog)prog.textContent=currentLevel+'/100';
+}
+
+// ===== SPIN =====
+let spinning=false;
+function spin(){
+  if(spinning)return;
+  if(S.lastChallenge.type!=='ready'&&!completedThisTurn){
+    const hint=document.getElementById('actionHint');
+    hint.style.color='var(--rose)';hint.style.opacity='1';
+    setTimeout(()=>{hint.style.color='';hint.style.opacity='';},1200);
+    return;
+  }
+  doSpin();
+}
+function doSpin(){
+  if(spinning)return;
+  spinning=true;
+  const btn=document.getElementById('spinBtn');
+  btn.classList.add('spinning');
+  playSpinSfx();vibe();
+  spawnHearts(4);spawnConfetti(25);
+  setTimeout(()=>{
+    const c=getChallenge(S.category);
+    showChallenge(c);playCatSfx(c.type);
+    completedThisTurn=false;updateTurnUI();save();
+    btn.classList.remove('spinning');spinning=false;
+  },600);
+}
+function passTurn(){S.turn=S.turn===1?2:1;completedThisTurn=false;save();doSpin();}
+
+// ===== SCORING =====
+function showToast(msg){const t=document.getElementById('ptToast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function addPoint(){
+  if(completedThisTurn)return;
+  const scorer=S.turn;const MAX=100;
+  if(scorer===1){if(S.score1>=MAX)return;S.score1=Math.min(S.score1+10,MAX);}
+  else{if(S.score2>=MAX)return;S.score2=Math.min(S.score2+10,MAX);}
+  const name=scorer===1?S.p1:S.p2;
+  completedThisTurn=true;
+  showToast('🎉 '+name+' +10 pts!');
+  playSuccessSfx();vibe(100);spawnConfetti(30);spawnHearts(4);
+  S.turn=S.turn===1?2:1;
+  updateTurnUI();save();
+  if(S.score1>=MAX||S.score2>=MAX){
+    gamesCompletedSinceAd++;
+    // Interstitial every 4 games
+    if(gamesCompletedSinceAd>=4){
+      gamesCompletedSinceAd=0;
+      try{window.AdMobBridge.showInterstitial();}catch(e){}
+    }
+    setTimeout(showWinScreen,700);
+  }
+}
+
+// ===== REWARD AD — Change Task =====
+function onChangeTaskTap(){
+  showToast('🎬 Loading ad...');
+  try{
+    window.AdMobBridge.showRewardAd(function(rewarded){
+      if(rewarded)onRewardGranted();
+      else showToast('Ad skipped — no task change');
+    });
+  }catch(e){
+    // fallback if no bridge
+    onRewardGranted();
+  }
+}
+function onRewardGranted(){
+  const c=getChallenge(S.category);
+  showChallenge(c);playCatSfx(c.type);
+  completedThisTurn=false;updateTurnUI();
+  showToast('✅ New challenge unlocked! 🎉');
+  spawnHearts(5);
+}
+
+// ===== WIN =====
+const winMsgs=["What a beautiful game! Your love story is the real prize. 💕","Every challenge brought you closer. Love always wins! 🌹","You played with your hearts. That's what truly matters. 💖","Champions in the game, partners in life. 💑","Love wins, always. Congratulations to both! ✨"];
+function showWinScreen(){
+  playWinSfx();spawnConfetti(140);spawnHearts(22);vibe(250);
+  const p1wins=S.score1>=100;
+  const winner=p1wins?S.p1:S.p2,loser=p1wins?S.p2:S.p1;
+  const wpts=p1wins?S.score1:S.score2,lpts=p1wins?S.score2:S.score1;
+  document.getElementById('winTitle').textContent=winner+'!';
+  document.getElementById('winnerName').innerHTML=winner+' <span class="win-badge">WINNER</span>';
+  document.getElementById('winnerPts').textContent=wpts;
+  document.getElementById('loserName').textContent=loser;
+  document.getElementById('loserPts').textContent=lpts;
+  document.getElementById('winMsg').textContent=winMsgs[Math.floor(Math.random()*winMsgs.length)];
+  const sub=document.getElementById('winSubtitle');
+  if(sub)sub.textContent=currentLevel<100?'Level '+currentLevel+' Complete · Unlocking Level '+(currentLevel+1):'Level 100 · Max Level 🔥';
+  updateWinAvatars(p1wins);
+  document.getElementById('winOverlay').classList.add('show');
+}
+function hideWinAndRestart(){
+  document.getElementById('winOverlay').classList.remove('show');
+  levelUp();
+  S.score1=0;S.score2=0;S.turn=1;
+  S.lastChallenge={type:'ready',text:'Tap SPIN to begin your love challenge!'};
+  completedThisTurn=false;
+  save();refreshGame();showChallenge(S.lastChallenge);updateTurnUI();
+}
+
+// ===== LEVEL UP =====
+function levelUp(){
+  if(currentLevel>=100){console.log('Max Level Reached 🔥');showToast('🔥 Max Level Reached! You are legends!');return;}
+  const prev=currentLevel;
+  currentLevel=Math.min(currentLevel+1,100);
+  if(currentLevel>highestLevelUnlocked)highestLevelUnlocked=currentLevel;
+  saveLevelData();console.log('Level Up:',currentLevel);
+  updateLevelUI();showLevelUpOverlay(prev,currentLevel);
+}
+function showLevelUpOverlay(prev,newLv){
+  const tier=getLevelTier(newLv),star=getLevelStar(tier),color=getLevelTierColor(tier),isMax=newLv>=100;
+  document.getElementById('levelupStar').textContent=isMax?'👑':star;
+  document.getElementById('levelupNum').textContent=newLv;
+  document.getElementById('levelupTier').textContent=isMax?'🔥 MAX LEVEL REACHED!':getLevelTierLabel(tier);
+  document.getElementById('levelupTier').style.color=color;
+  const prevTier=getLevelTier(prev);
+  document.getElementById('levelupMsg').textContent=isMax?'You two have conquered all 100 levels! You are the ultimate couple! 👑💕':
+    (tier!==prevTier?'🎉 New tier unlocked: '+getLevelTierLabel(tier)+'! '+getLevelUpMsg(newLv,tier):getLevelUpMsg(newLv,tier));
+  document.getElementById('levelupOverlay').classList.add('show');
+  spawnConfetti(60);spawnHearts(10);vibe(150);
+}
+function hideLevelUpOverlay(){document.getElementById('levelupOverlay').classList.remove('show');}
+
+// ===== TIMER =====
+let timerInt=null,timerSec=30,timerRunning=false;
+const TFULL=188.5;
+function updateTimerUI(){document.getElementById('timerNum').textContent=timerSec;document.getElementById('timerArc').style.strokeDashoffset=TFULL*(1-timerSec/30);document.getElementById('timerArc').classList.toggle('urgent',timerSec<=10);}
+function resetTimer(){clearInterval(timerInt);timerRunning=false;timerSec=30;updateTimerUI();document.getElementById('timerStart').textContent='▶ Start';}
+function startTimer(){if(timerRunning)return;timerRunning=true;document.getElementById('timerStart').textContent='⏸ Running';timerInt=setInterval(()=>{timerSec--;if(timerSec<=10)vibe(20);updateTimerUI();if(timerSec<=0){clearInterval(timerInt);timerRunning=false;document.getElementById('timerStart').textContent='⏰ Done!';playTone(440,.5);}},1000);}
+
+// ===== SHARE SYSTEM — NO FETCH, pure canvas + native share =====
+let capturedImageDataUrl='';
+
+async function captureShareCard(){
+  // Build share card HTML dynamically — no external fetch needed
+  const p1wins=S.score1>=100||(S.score1>S.score2&&S.score1>0);
+  const winner=p1wins?S.p1:S.p2;
+  document.getElementById('scCouple').textContent=S.p1+' ❤️ '+S.p2;
+  document.getElementById('scWinner').textContent=winner;
+  document.getElementById('scSname1').textContent=S.p1;
+  document.getElementById('scSpts1').textContent=S.score1;
+  document.getElementById('scSname2').textContent=S.p2;
+  document.getElementById('scSpts2').textContent=S.score2;
+  document.getElementById('scBox1').className='sc-score-box'+(p1wins?' won':'');
+  document.getElementById('scBox2').className='sc-score-box'+(!p1wins?' won':'');
+  document.getElementById('scLvl').textContent='Level '+currentLevel+' · '+getLevelTier(currentLevel).charAt(0).toUpperCase()+getLevelTier(currentLevel).slice(1);
+  // Set avatars in share card
+  setShareAv('scAv1','scAvEmoji1',p1wins?avatarData1:avatarData2,p1wins?'💕':'💞');
+  setShareAv('scAv2','scAvEmoji2',p1wins?avatarData2:avatarData1,p1wins?'💞':'💕');
+
+  // Try canvas capture
+  if(window.html2canvas){
+    const wrap=document.getElementById('shareCardWrap');
+    wrap.style.left='0px';wrap.style.top='100px';wrap.style.zIndex='9998';
+    try{
+      await new Promise(r=>setTimeout(r,150));
+      const canvas=await html2canvas(wrap,{backgroundColor:'#1a0a10',scale:2,useCORS:true,logging:false,allowTaint:true});
+      wrap.style.left='-9999px';wrap.style.zIndex='-1';
+      capturedImageDataUrl=canvas.toDataURL('image/png');
+      return true;
+    }catch(e){
+      wrap.style.left='-9999px';
+      capturedImageDataUrl='';
+      return false;
+    }
+  }
+  return false;
+}
+
+// Generate plain-text share message (fallback)
+function getShareText(){
+  const p1wins=S.score1>=100||(S.score1>S.score2&&S.score1>0);
+  const winner=p1wins?S.p1:S.p2;
+  return `🏆 ${winner} won the Love Challenge!\n💕 ${S.p1}: ${S.score1} pts | ${S.p2}: ${S.score2} pts\n⭐ Level ${currentLevel} · #LoveChallenge`;
+}
+
+// Open share sheet
+async function openShareSheet(){
+  showToast('📸 Preparing share...');
+  await captureShareCard();
+  document.getElementById('shareSheet').classList.add('open');
+  document.getElementById('shareBackdrop').classList.add('open');
+}
+function closeShareSheet(){
+  document.getElementById('shareSheet').classList.remove('open');
+  document.getElementById('shareBackdrop').classList.remove('open');
+}
+
+// Share to specific app
+async function shareToApp(app){
+  closeShareSheet();
+  const text=getShareText();
+
+  // 1. Try Web Share API (works on mobile Safari/Chrome, shares image directly)
+  if(capturedImageDataUrl&&app!=='copy'){
+    try{
+      const blob=await(await fetch(capturedImageDataUrl)).blob();
+      const file=new File([blob],'love-challenge.png',{type:'image/png'});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'Love Challenge Result',text:text});
+        return;
+      }
+    }catch(e){
+      // Fall through to app-specific URLs
+    }
+  }
+
+  // 2. App-specific deep links / URL schemes
+  const enc=encodeURIComponent(text);
+  const urls={
+    whatsapp:`whatsapp://send?text=${enc}`,
+    facebook:`https://www.facebook.com/sharer/sharer.php?quote=${enc}`,
+    twitter:`https://twitter.com/intent/tweet?text=${enc}`,
+    tiktok:`https://www.tiktok.com/`,
+    instagram:`instagram://`,
+    snapchat:`snapchat://`,
+    youtube:`https://www.youtube.com/`
+  };
+
+  if(app==='copy'){
+    try{
+      if(navigator.clipboard){await navigator.clipboard.writeText(text);showToast('📋 Copied to clipboard!');}
+      else{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();showToast('📋 Copied!');}
+    }catch(e){showToast('📋 Copy: '+text.slice(0,40)+'...');}
+    // Also save image
+    if(capturedImageDataUrl){const a=document.createElement('a');a.href=capturedImageDataUrl;a.download='love-challenge.png';a.click();}
+    return;
+  }
+
+  // Try to open app — if in WebView this works for most apps
+  const url=urls[app];
+  if(url){
+    try{window.location.href=url;}
+    catch(e){window.open(url,'_blank');}
+    // Save image as fallback
+    if(capturedImageDataUrl){setTimeout(()=>{const a=document.createElement('a');a.href=capturedImageDataUrl;a.download='love-challenge.png';a.click();},800);}
+  } else {
+    // Fallback: use native share
+    if(navigator.share){navigator.share({title:'Love Challenge',text:text}).catch(()=>{});}
+    else{showToast('Open the app and paste! 📋');navigator.clipboard&&navigator.clipboard.writeText(text);}
+  }
+}
+
+// ===== UI SCREENS =====
+function show(id){
+  ['homeScreen','gameScreen','settingsScreen'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  if(id==='gameScreen')refreshGame();
+  if(id==='settingsScreen')refreshSettings();
+  if(id==='homeScreen')refreshHome();
+}
+function refreshHome(){
+  document.getElementById('p1NameHome').value=S.p1;
+  document.getElementById('p2NameHome').value=S.p2;
+  // Restore avatars
+  if(S.avatar1){avatarData1=S.avatar1;setAvatarEl('avatarImg1','avatarEmoji1',avatarData1,'💕');}
+  if(S.avatar2){avatarData2=S.avatar2;setAvatarEl('avatarImg2','avatarEmoji2',avatarData2,'💞');}
+  updateLevelUI();
+}
+function refreshGame(){
+  document.getElementById('sName1').textContent=S.p1;
+  document.getElementById('sName2').textContent=S.p2;
+  applyAvatars();updateScoreUI();
+  document.getElementById('turnName').textContent=S.turn===1?S.p1:S.p2;
+  showChallenge(S.lastChallenge);updateTurnUI();updateLevelUI();
+}
+function refreshSettings(){
+  document.getElementById('musicVol').value=S.musicVol*100;
+  document.getElementById('musicToggle').classList.toggle('on',S.music);
+  document.getElementById('sfxToggle').classList.toggle('on',S.sfx);
+  document.getElementById('vibroToggle').classList.toggle('on',S.vibro);
+}
+function saveNames(){
+  S.p1=document.getElementById('p1NameHome').value.trim()||'Player 1';
+  S.p2=document.getElementById('p2NameHome').value.trim()||'Player 2';
+  save();
+}
+
+// ===== INIT =====
+function init(){
+  load();loadLevelData();
+  refreshHome();show('homeScreen');
+
+  // Music unlock on first user gesture
+  const unlock=()=>{if(S.music)startMusic();document.removeEventListener('click',unlock);document.removeEventListener('touchstart',unlock);};
+  document.addEventListener('click',unlock);document.addEventListener('touchstart',unlock);
+
+  // Avatar file inputs
+  document.getElementById('avatarInput1').onchange=e=>handleAvatarFile(1,e.target.files[0]);
+  document.getElementById('avatarInput2').onchange=e=>handleAvatarFile(2,e.target.files[0]);
+
+  // Name inputs — save on blur
+  document.getElementById('p1NameHome').addEventListener('blur',saveNames);
+  document.getElementById('p2NameHome').addEventListener('blur',saveNames);
+  document.getElementById('p1NameHome').addEventListener('change',saveNames);
+  document.getElementById('p2NameHome').addEventListener('change',saveNames);
+
+  // Navigation
+  document.getElementById('startBtn').onclick=()=>{saveNames();show('gameScreen');};
+  document.getElementById('settingsBtn').onclick=()=>show('settingsScreen');
+  document.getElementById('homeBtn').onclick=()=>show('homeScreen');
+  document.getElementById('saveSettingsBtn').onclick=()=>{show('homeScreen');};
+
+  // Game
+  document.getElementById('spinBtn').onclick=spin;
+  document.getElementById('nextBtn').onclick=passTurn;
+  document.getElementById('completeBtn').onclick=addPoint;
+  document.getElementById('shareBtn').onclick=openShareSheet;
+  document.getElementById('changeTaskBtn').onclick=onChangeTaskTap;
+  document.getElementById('timerStart').onclick=startTimer;
+  document.getElementById('timerReset').onclick=resetTimer;
+
+  // Win overlay
+  document.getElementById('winShareBtn').onclick=openShareSheet;
+  document.getElementById('winPlayAgainBtn').onclick=hideWinAndRestart;
+
+  // Level up
+  document.getElementById('levelupContinueBtn').onclick=hideLevelUpOverlay;
+
+  // Share backdrop
+  document.getElementById('shareBackdrop').onclick=closeShareSheet;
+
+  // Category pills
+  document.querySelectorAll('.cat-pill').forEach(p=>{
+    p.onclick=()=>{document.querySelectorAll('.cat-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');S.category=p.dataset.cat;save();};
+  });
+
+  // Settings toggles
+  document.getElementById('musicToggle').onclick=()=>{S.music=!S.music;document.getElementById('musicToggle').classList.toggle('on',S.music);if(mGain)mGain.gain.value=S.music?S.musicVol:0;if(S.music&&!mOn)startMusic();else if(!S.music)stopMusic();save();};
+  document.getElementById('sfxToggle').onclick=()=>{S.sfx=!S.sfx;document.getElementById('sfxToggle').classList.toggle('on',S.sfx);save();};
+  document.getElementById('vibroToggle').onclick=()=>{S.vibro=!S.vibro;document.getElementById('vibroToggle').classList.toggle('on',S.vibro);save();};
+  document.getElementById('musicVol').oninput=e=>{S.musicVol=e.target.value/100;if(mGain)mGain.gain.value=S.music?S.musicVol:0;save();};
+
+  // Data
+  document.getElementById('resetScoreBtn').onclick=()=>{S.score1=0;S.score2=0;save();showToast('Scores reset! 💕');if(!document.getElementById('gameScreen').classList.contains('hidden'))refreshGame();};
+  document.getElementById('resetProgressBtn').onclick=resetProgress;
+  document.getElementById('resetAllBtn').onclick=()=>{localStorage.clear();location.reload();};
+}
+init();
+</script>
+
+<!-- html2canvas — only used for share card capture, no network fetch required at runtime -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html>
